@@ -83,14 +83,11 @@
 
       const initialFormState = {
         brand: 'Ledi',
+        itemStore: '',
         customerName: '',
         whatsapp: '',
         address: '',
-        dressName: '', 
-        itemModel: '',
-        imageUrl: '',
-        itemDescription: '',
-        deliveryDate: '',
+        dressName: '', deliveryDate: '',
         sellingPrice: '', advanceAmount: '', materialRate: '', stitchingCharge: '', tailorName: 'Ani Mol', shippingCharge: '',
         isAdvPaid: false,
         isFullyPaid: false,
@@ -250,7 +247,7 @@
         let msg = '';
 
         if (type === 'adv') {
-          msg = `*${brandHeader} - Order Confirmed! 🎉*\n\nHello *${order.customerName}*,\nYour order for *${order.dressName}* ${order.itemModel ? `(Model: ${order.itemModel})` : ''} has been confirmed.\n\n👗 *Dress Price:* ₹${order.sellingPrice || 0}\n💳 *Advance Paid:* ₹${order.advanceAmount || 0}\n💵 *Remaining Balance:* ₹${balance}\n📅 *Expected Delivery:* ${order.deliveryDate}`;
+          msg = `*${brandHeader} - Order Confirmed! 🎉*\n\nHello *${order.customerName}*,\nYour order for *${order.dressName}* has been confirmed.\n\n👗 *Dress Price:* ₹${order.sellingPrice || 0}\n💳 *Advance Paid:* ₹${order.advanceAmount || 0}\n💵 *Remaining Balance:* ₹${balance}\n📅 *Expected Delivery:* ${order.deliveryDate}`;
           
           await saveOrderToFirestore({ ...order, isAdvPaid: true });
 
@@ -276,7 +273,7 @@
         
         const targetNumber = TAILOR_NUMBERS[tailorName] || TAILOR_NUMBERS['Ani Mol'];
         
-        const msg = `Hello ${tailorName},\n\nThank you so much for your excellent work on *${order.dressName}* (Customer: *${customerName}*)! The stitching was outstanding and awesome.\n\nYour stitching charge of *₹${stitchingCharge}* has been credited to your account.\n\nBest regards,\n*KAIZ SOOQ*`;
+        const msg = `Hello ${tailorName},\n\nThank you so much for your excellent work on *${order.dressName}* (Customer: *${customerName}*)!\nThe stitching was outstanding and awesome.\n\nYour stitching charge of *₹${stitchingCharge}* has been credited to your account.\n\nBest regards,\n*KAIZ SOOQ*`;
 
         await saveOrderToFirestore({ ...order, isTailorNotified: true });
         setSelectedOrderDetails(prev => prev ? { ...prev, isTailorNotified: true } : null);
@@ -297,11 +294,11 @@
         }
 
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Brand,Customer Name,WhatsApp,Dress Name,Model,Selling Price,Advance,Balance,Fully Paid,Delivery Date,Tailor\n";
+        csvContent += "Brand,Item Store,Customer Name,WhatsApp,Dress Name,Selling Price,Advance,Balance,Fully Paid,Delivery Date,Tailor\n";
 
         reportData.forEach(o => {
           const bal = o.isFullyPaid ? 0 : (Number(o.sellingPrice || 0) - Number(o.advanceAmount || 0));
-          csvContent += `"${o.brand}","${o.customerName}","${o.whatsapp}","${o.dressName}","${o.itemModel || ''}",${o.sellingPrice},${o.advanceAmount},${bal},"${o.isFullyPaid ? 'YES' : 'NO'}","${o.deliveryDate}","${o.tailorName}"\n`;
+          csvContent += `"${o.brand}","${o.itemStore || ''}","${o.customerName}","${o.whatsapp}","${o.dressName}",${o.sellingPrice},${o.advanceAmount},${bal},"${o.isFullyPaid ? 'YES' : 'NO'}","${o.deliveryDate}","${o.tailorName}"\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
@@ -319,7 +316,7 @@
         const matchesSearch = (o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                               (o.whatsapp || '').includes(searchQuery) ||
                               (o.dressName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              (o.itemModel || '').toLowerCase().includes(searchQuery.toLowerCase());
+                              (o.itemStore || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         if (statusFilter === 'Pending') return matchesSearch && !o.isFullyPaid;
         if (statusFilter === 'Completed') return matchesSearch && o.isFullyPaid;
@@ -439,7 +436,7 @@
                     <button onClick={() => { setView('reports'); setIsSidebarOpen(false); }} className="text-left p-2 hover:bg-[#0D1B2A] hover:text-[#2ECC71] rounded-lg transition">📥 Reports & Downloads</button>
                   </nav>
                 </div>
-                <div className="text-[10px] text-gray-500">KAIZ SOOQ v3.7 - Cloud Store Active</div>
+                <div className="text-[10px] text-gray-500">KAIZ SOOQ v3.6 - Cloud Firebase Active</div>
               </div>
               <div className="flex-1" onClick={() => setIsSidebarOpen(false)}></div>
             </div>
@@ -573,7 +570,7 @@
             {view === 'addOrder' && (
               <form onSubmit={handleOrderSubmit} className="bg-[#1B2A4A] p-4 rounded-2xl border border-gray-800 space-y-4">
                 <h2 className="text-base font-bold text-white border-b border-gray-800 pb-2">
-                  {editingOrderId ? 'Edit Order Details' : 'Create New Order / Store Item'}
+                  {editingOrderId ? 'Edit Order Details' : 'Create New Order'}
                 </h2>
                 
                 <div>
@@ -584,40 +581,29 @@
                   </div>
                 </div>
 
+                {/* ITEM STORE FIELD */}
+                <div>
+                  <label className="text-xs font-bold text-gray-400">Item Store / Origin Store</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Main Store, Outlet A, Supplier Name..." 
+                    value={formData.itemStore} 
+                    onChange={(e) => setFormData({ ...formData, itemStore: e.target.value })} 
+                    className="w-full mt-1 p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" 
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <input type="text" placeholder="Customer Name" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
                   <input type="text" placeholder="WhatsApp Number (e.g. 9876543210)" value={formData.whatsapp} onChange={(e) => handleWhatsappChange(e.target.value)} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
                   <textarea placeholder="Shipping Address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none h-16"></textarea>
                 </div>
 
-                {/* ITEM STORE SPECIFIC DETAILS */}
-                <div className="space-y-2 bg-[#0D1B2A] p-3 rounded-xl border border-gray-800">
-                  <h3 className="text-xs font-bold text-[#2ECC71]">🛍️ Item & Store Information</h3>
-                  
-                  <input type="text" placeholder="Dress Name / Item Title *" value={formData.dressName} onChange={(e) => setFormData({ ...formData, dressName: e.target.value })} required className="w-full p-2.5 text-xs bg-[#1B2A4A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
-                  
-                  <input type="text" placeholder="Model Number / Code (e.g. MOD-2026-X)" value={formData.itemModel || ''} onChange={(e) => setFormData({ ...formData, itemModel: e.target.value })} className="w-full p-2.5 text-xs bg-[#1B2A4A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
-                  
-                  <input type="url" placeholder="Image URL (e.g. https://example.com/image.jpg)" value={formData.imageUrl || ''} onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })} className="w-full p-2.5 text-xs bg-[#1B2A4A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
-
-                  {/* Image Preview */}
-                  {formData.imageUrl && (
-                    <div className="p-2 bg-[#1B2A4A] border border-gray-800 rounded-lg flex items-center gap-3">
-                      <img 
-                        src={formData.imageUrl} 
-                        alt="Item Preview" 
-                        className="w-12 h-12 object-cover rounded-md border border-gray-700"
-                        onError={(e) => e.target.style.display='none'} 
-                      />
-                      <span className="text-[10px] text-gray-400">Image Preview Loaded</span>
-                    </div>
-                  )}
-
-                  <textarea placeholder="Item Description (Fabric details, color, sizes...)" value={formData.itemDescription || ''} onChange={(e) => setFormData({ ...formData, itemDescription: e.target.value })} className="w-full p-2.5 text-xs bg-[#1B2A4A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none h-16"></textarea>
-
+                <div className="space-y-2">
+                  <input type="text" placeholder="Dress Name / Item Code" value={formData.dressName} onChange={(e) => setFormData({ ...formData, dressName: e.target.value })} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
                   <div>
                     <label className="text-[10px] font-bold text-[#E74C3C]">Expected Delivery Date *</label>
-                    <input type="date" value={formData.deliveryDate} onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })} required className="w-full p-2.5 text-xs bg-[#1B2A4A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
+                    <input type="date" value={formData.deliveryDate} onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
                   </div>
                 </div>
 
@@ -683,7 +669,7 @@
                 <div className="bg-[#1B2A4A] p-3 rounded-xl border border-gray-800 space-y-2">
                   <input 
                     type="text" 
-                    placeholder="🔍 Search Customer, Model, Dress..." 
+                    placeholder="🔍 Search Customer, WhatsApp, Dress, or Store..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none"
@@ -721,19 +707,15 @@
                     if (order.isFullyPaid) {
                       return (
                         <div key={order.id} className="bg-[#1B2A4A] p-4 rounded-xl border border-emerald-500/40 flex justify-between items-center shadow-md">
-                          <div className="flex items-center gap-3">
-                            {order.imageUrl && (
-                              <img src={order.imageUrl} alt="" className="w-10 h-10 object-cover rounded-lg border border-gray-700" />
-                            )}
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold bg-emerald-500/20 text-[#2ECC71] border border-emerald-500/40 px-2 py-0.5 rounded">
-                                  Completed
-                                </span>
-                                <h3 className="font-bold text-base text-white">{order.customerName}</h3>
-                              </div>
-                              <p className="text-[10px] text-gray-400 mt-0.5">📱 {order.whatsapp} {order.itemModel ? `| Model: ${order.itemModel}` : ''}</p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold bg-emerald-500/20 text-[#2ECC71] border border-emerald-500/40 px-2 py-0.5 rounded">
+                                Completed
+                              </span>
+                              <h3 className="font-bold text-base text-white">{order.customerName}</h3>
                             </div>
+                            <p className="text-[10px] text-gray-400 mt-0.5">📱 {order.whatsapp}</p>
+                            {order.itemStore && <p className="text-[10px] text-amber-300">🏪 Store: {order.itemStore}</p>}
                           </div>
                           <div className="text-right flex items-center gap-2">
                             <div className="text-base font-black text-[#2ECC71]">₹{order.sellingPrice}</div>
@@ -751,20 +733,22 @@
                     // PENDING ORDERS CARD
                     return (
                       <div key={order.id} className="bg-[#1B2A4A] p-4 rounded-xl border border-gray-800 space-y-3 shadow-md relative">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="flex gap-3">
-                            {order.imageUrl && (
-                              <img src={order.imageUrl} alt="" className="w-12 h-12 object-cover rounded-lg border border-gray-700 mt-1" />
-                            )}
-                            <div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex gap-1.5 items-center">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${order.brand === 'Ledi' ? 'bg-blue-600' : 'bg-purple-600'}`}>
                                 {order.brand}
                               </span>
-                              <h3 className="font-bold text-base text-white mt-1">{order.customerName}</h3>
-                              <p className="text-xs text-gray-300">📱 WA: {order.whatsapp}</p>
-                              <p className="text-xs text-gray-400">{order.dressName} {order.itemModel ? `(${order.itemModel})` : ''} | Delivery: <span className="text-gray-200">{order.deliveryDate}</span></p>
-                              <p className="text-[11px] text-gray-400">🧵 Tailor: <span className="text-[#2ECC71] font-bold">{order.tailorName || 'Ani Mol'}</span></p>
+                              {order.itemStore && (
+                                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
+                                  🏪 {order.itemStore}
+                                </span>
+                              )}
                             </div>
+                            <h3 className="font-bold text-base text-white mt-1">{order.customerName}</h3>
+                            <p className="text-xs text-gray-300">📱 WA: {order.whatsapp}</p>
+                            <p className="text-xs text-gray-400">{order.dressName} | Delivery: <span className="text-gray-200">{order.deliveryDate}</span></p>
+                            <p className="text-[11px] text-gray-400">🧵 Tailor: <span className="text-[#2ECC71] font-bold">{order.tailorName || 'Ani Mol'}</span></p>
                           </div>
                           <div className="text-right">
                             <div className="text-base font-black text-[#2ECC71]">₹{order.sellingPrice}</div>
@@ -807,50 +791,27 @@
                       <div className="flex justify-between items-center border-b border-gray-800 pb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-bold bg-emerald-500/20 text-[#2ECC71] border border-emerald-500/40 px-2 py-0.5 rounded">
-                            ✅ Order Details
+                            ✅ Completed Order
                           </span>
                           <h3 className="font-bold text-white text-base">{selectedOrderDetails.customerName}</h3>
                         </div>
                         <button onClick={() => setSelectedOrderDetails(null)} className="text-gray-400 font-bold text-lg">✕</button>
                       </div>
 
-                      {/* Product Image Display */}
-                      {selectedOrderDetails.imageUrl && (
-                        <div className="w-full h-44 bg-[#0D1B2A] rounded-xl overflow-hidden border border-gray-800 flex items-center justify-center">
-                          <img 
-                            src={selectedOrderDetails.imageUrl} 
-                            alt={selectedOrderDetails.dressName} 
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-
                       <div className="space-y-2 text-xs text-gray-300 bg-[#0D1B2A] p-3 rounded-xl border border-gray-800">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Item Store:</span>
+                          <span className="font-bold text-amber-300">{selectedOrderDetails.itemStore || 'N/A'}</span>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Dress / Item:</span>
                           <span className="font-bold text-white">{selectedOrderDetails.dressName}</span>
                         </div>
-                        {selectedOrderDetails.itemModel && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Model No:</span>
-                            <span className="font-bold text-amber-400">{selectedOrderDetails.itemModel}</span>
-                          </div>
-                        )}
                         <div className="flex justify-between">
                           <span className="text-gray-400">Brand:</span>
                           <span className="font-bold text-white">{selectedOrderDetails.brand}</span>
                         </div>
-
-                        {selectedOrderDetails.itemDescription && (
-                          <div className="border-t border-gray-800 pt-2 mt-1">
-                            <span className="text-gray-400 block mb-0.5">Item Description:</span>
-                            <p className="text-[11px] text-gray-300 bg-[#1B2A4A] p-2 rounded border border-gray-800">
-                              {selectedOrderDetails.itemDescription}
-                            </p>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between border-t border-gray-800 pt-1 mt-1">
+                        <div className="flex justify-between">
                           <span className="text-gray-400">WhatsApp:</span>
                           <span className="font-bold text-white">{selectedOrderDetails.whatsapp}</span>
                         </div>
