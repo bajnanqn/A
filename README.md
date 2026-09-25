@@ -295,7 +295,7 @@
         });
       };
 
-      // AUTOMATED CUSTOMER WHATSAPP TRIGGER FUNCTIONS (FIXED POPUP ISSUE)
+      // AUTOMATED CUSTOMER WHATSAPP TRIGGER FUNCTIONS
       const triggerWhatsApp = async (type, order) => {
         const rawTargetPhone = order.whatsapp || '';
         
@@ -315,26 +315,24 @@
 
         if (type === 'adv') {
           msg = `*${brandHeader} - Order Confirmed! 🎉*\n\nHello *${order.customerName}*,\nYour order for *${order.dressName}* has been confirmed.\n\n👗 *Dress Price:* ₹${order.sellingPrice || 0}\n💳 *Advance Paid:* ₹${order.advanceAmount || 0}\n💵 *Remaining Balance:* ₹${balance}\n📅 *Expected Delivery:* ${order.deliveryDate}`;
+          
+          await saveOrderToFirestore({ ...order, isAdvPaid: true });
+
         } else if (type === 'remind') {
           msg = `*${brandHeader} - Payment Reminder 🔔*\n\nHello *${order.customerName}*,\nThis is a friendly reminder regarding your order for *${order.dressName}*.\n\n👗 *Total Price:* ₹${order.sellingPrice || 0}\n💳 *Advance Paid:* ₹${order.advanceAmount || 0}\n💵 *Pending Balance:* ₹${balance}\n\nPlease pay the remaining balance via GPay/PhonePe to:\n👉 *Muhammedanas3010-1@oksbi*`;
+        
         } else if (type === 'full') {
           msg = `*${brandHeader} - Payment Received! ✅*\n\nHello *${order.customerName}*,\nThank you! We have received full payment for your dress *${order.dressName}*.\n\n👗 *Total Amount:* ₹${order.sellingPrice || 0}\n✅ *Status:* Fully Paid\n🚚 *Transit Update:* Your dress is currently in transit and will reach you shortly!\n\nThank you for shopping with us!`;
+          
+          await saveOrderToFirestore({ ...order, isFullyPaid: true, advanceAmount: order.sellingPrice });
         }
 
         msg += order.brand === 'Bebi' ? `\n\n*KAIZ SOOQ - Be Every Baby’s Ideal*` : `\n\n*KAIZ SOOQ*`;
 
-        // Directly open WhatsApp window first to avoid browser popup blocks
         window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-
-        // Update database after launching WhatsApp
-        if (type === 'adv') {
-          await saveOrderToFirestore({ ...order, isAdvPaid: true });
-        } else if (type === 'full') {
-          await saveOrderToFirestore({ ...order, isFullyPaid: true, advanceAmount: order.sellingPrice });
-        }
       };
 
-      // TAILOR WHATSAPP MESSAGE FUNCTION (FIXED POPUP ISSUE)
+      // TAILOR WHATSAPP MESSAGE FUNCTION
       const triggerTailorWhatsApp = async (order) => {
         const tailorName = order.tailorName || 'Ani Mol';
         const stitchingCharge = order.stitchingCharge || 0;
@@ -344,11 +342,10 @@
         
         const msg = `Hello ${tailorName},\n\nThank you so much for your excellent work on *${order.dressName}* (Customer: *${customerName}*)! The stitching was outstanding and awesome.\n\nYour stitching charge of *₹${stitchingCharge}* has been credited to your account.\n\nBest regards,\n*KAIZ SOOQ*`;
 
-        // Directly open WhatsApp window first to avoid browser popup blocks
-        window.open(`https://wa.me/${targetNumber}?text=${encodeURIComponent(msg)}`, '_blank');
-
         await saveOrderToFirestore({ ...order, isTailorNotified: true });
         setSelectedOrderDetails(prev => prev ? { ...prev, isTailorNotified: true } : null);
+
+        window.open(`https://wa.me/${targetNumber}?text=${encodeURIComponent(msg)}`, '_blank');
       };
 
       const filteredOrdersByBrand = brandFilter === 'All' ? orders : orders.filter(o => o.brand === brandFilter);
@@ -375,11 +372,12 @@
       const ummaStitching = orders.filter(o => o.tailorName === 'Umma').reduce((sum, o) => sum + Number(o.stitchingCharge || 0), 0);
       const nusrathStitching = orders.filter(o => o.tailorName === 'Nusrath').reduce((sum, o) => sum + Number(o.stitchingCharge || 0), 0);
 
+      // Complete ചെയ്ത ഓർഡറുകളിൽ നിന്നും മാത്രം ലാഭം കണക്കാക്കുന്നു
       const calculateBrandFinancials = (brandOrders) => {
         let totalProfit = 0;
         let totalExpense = 0;
         let totalRevenue = 0;
-        brandOrders.forEach(o => {
+        brandOrders.filter(o => o.isFullyPaid).forEach(o => {
           const sp = Number(o.sellingPrice || 0);
           const exp = Number(o.materialRate || 0) + Number(o.stitchingCharge || 0) + Number(o.shippingCharge || 0);
           totalRevenue += sp;
@@ -393,11 +391,15 @@
       const bebiFinancials = calculateBrandFinancials(bebiOrders);
 
       const overallTotalRevenue = filteredOrdersByBrand.reduce((sum, o) => sum + Number(o.sellingPrice || 0), 0);
-      const overallNetProfit = filteredOrdersByBrand.reduce((sum, o) => {
-        const sp = Number(o.sellingPrice || 0);
-        const cost = Number(o.materialRate || 0) + Number(o.stitchingCharge || 0) + Number(o.shippingCharge || 0);
-        return sum + (sp - cost);
-      }, 0);
+      
+      // Net Profit & Anu Profit - Complete (isFullyPaid) ആയ ഓർഡറുകൾ മാത്രം കൂട്ടുന്നു
+      const overallNetProfit = filteredOrdersByBrand
+        .filter(o => o.isFullyPaid)
+        .reduce((sum, o) => {
+          const sp = Number(o.sellingPrice || 0);
+          const cost = Number(o.materialRate || 0) + Number(o.stitchingCharge || 0) + Number(o.shippingCharge || 0);
+          return sum + (sp - cost);
+        }, 0);
 
       const currentFormProfit = (Number(formData.sellingPrice) || 0) - (
         (Number(formData.materialRate) || 0) + 
@@ -505,7 +507,7 @@
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-gray-400">Real-time cloud database revenue and profit tracking across all orders.</p>
+                  <p className="text-[11px] text-gray-400">Real-time cloud database revenue and profit tracking across all completed orders.</p>
                 </div>
 
                 <div className="bg-[#1B2A4A] p-3.5 rounded-xl border border-emerald-500/30 space-y-3 shadow-lg">
@@ -994,3 +996,4 @@
   </script>
 </body>
 </html>
+
