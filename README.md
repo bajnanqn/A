@@ -83,7 +83,6 @@
 
       const initialFormState = {
         brand: 'Ledi',
-        itemStore: '',
         customerName: '',
         whatsapp: '',
         address: '',
@@ -273,7 +272,7 @@
         
         const targetNumber = TAILOR_NUMBERS[tailorName] || TAILOR_NUMBERS['Ani Mol'];
         
-        const msg = `Hello ${tailorName},\n\nThank you so much for your excellent work on *${order.dressName}* (Customer: *${customerName}*)!\nThe stitching was outstanding and awesome.\n\nYour stitching charge of *₹${stitchingCharge}* has been credited to your account.\n\nBest regards,\n*KAIZ SOOQ*`;
+        const msg = `Hello ${tailorName},\n\nThank you so much for your excellent work on *${order.dressName}* (Customer: *${customerName}*)! The stitching was outstanding and awesome.\n\nYour stitching charge of *₹${stitchingCharge}* has been credited to your account.\n\nBest regards,\n*KAIZ SOOQ*`;
 
         await saveOrderToFirestore({ ...order, isTailorNotified: true });
         setSelectedOrderDetails(prev => prev ? { ...prev, isTailorNotified: true } : null);
@@ -294,11 +293,11 @@
         }
 
         let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Brand,Item Store,Customer Name,WhatsApp,Dress Name,Selling Price,Advance,Balance,Fully Paid,Delivery Date,Tailor\n";
+        csvContent += "Brand,Customer Name,WhatsApp,Dress Name,Selling Price,Advance,Balance,Fully Paid,Delivery Date,Tailor\n";
 
         reportData.forEach(o => {
           const bal = o.isFullyPaid ? 0 : (Number(o.sellingPrice || 0) - Number(o.advanceAmount || 0));
-          csvContent += `"${o.brand}","${o.itemStore || ''}","${o.customerName}","${o.whatsapp}","${o.dressName}",${o.sellingPrice},${o.advanceAmount},${bal},"${o.isFullyPaid ? 'YES' : 'NO'}","${o.deliveryDate}","${o.tailorName}"\n`;
+          csvContent += `"${o.brand}","${o.customerName}","${o.whatsapp}","${o.dressName}",${o.sellingPrice},${o.advanceAmount},${bal},"${o.isFullyPaid ? 'YES' : 'NO'}","${o.deliveryDate}","${o.tailorName}"\n`;
         });
 
         const encodedUri = encodeURI(csvContent);
@@ -315,8 +314,7 @@
       const searchedAndFilteredOrders = filteredOrdersByBrand.filter(o => {
         const matchesSearch = (o.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                               (o.whatsapp || '').includes(searchQuery) ||
-                              (o.dressName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              (o.itemStore || '').toLowerCase().includes(searchQuery.toLowerCase());
+                              (o.dressName || '').toLowerCase().includes(searchQuery.toLowerCase());
         
         if (statusFilter === 'Pending') return matchesSearch && !o.isFullyPaid;
         if (statusFilter === 'Completed') return matchesSearch && o.isFullyPaid;
@@ -581,18 +579,6 @@
                   </div>
                 </div>
 
-                {/* ITEM STORE FIELD */}
-                <div>
-                  <label className="text-xs font-bold text-gray-400">Item Store / Origin Store</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Main Store, Outlet A, Supplier Name..." 
-                    value={formData.itemStore} 
-                    onChange={(e) => setFormData({ ...formData, itemStore: e.target.value })} 
-                    className="w-full mt-1 p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" 
-                  />
-                </div>
-
                 <div className="space-y-2">
                   <input type="text" placeholder="Customer Name" value={formData.customerName} onChange={(e) => setFormData({ ...formData, customerName: e.target.value })} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
                   <input type="text" placeholder="WhatsApp Number (e.g. 9876543210)" value={formData.whatsapp} onChange={(e) => handleWhatsappChange(e.target.value)} required className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none" />
@@ -669,7 +655,7 @@
                 <div className="bg-[#1B2A4A] p-3 rounded-xl border border-gray-800 space-y-2">
                   <input 
                     type="text" 
-                    placeholder="🔍 Search Customer, WhatsApp, Dress, or Store..." 
+                    placeholder="🔍 Search Customer, WhatsApp, or Dress..." 
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full p-2.5 text-xs bg-[#0D1B2A] border border-gray-800 rounded-lg text-white focus:border-[#2ECC71] outline-none"
@@ -715,7 +701,6 @@
                               <h3 className="font-bold text-base text-white">{order.customerName}</h3>
                             </div>
                             <p className="text-[10px] text-gray-400 mt-0.5">📱 {order.whatsapp}</p>
-                            {order.itemStore && <p className="text-[10px] text-amber-300">🏪 Store: {order.itemStore}</p>}
                           </div>
                           <div className="text-right flex items-center gap-2">
                             <div className="text-base font-black text-[#2ECC71]">₹{order.sellingPrice}</div>
@@ -735,16 +720,9 @@
                       <div key={order.id} className="bg-[#1B2A4A] p-4 rounded-xl border border-gray-800 space-y-3 shadow-md relative">
                         <div className="flex justify-between items-start">
                           <div>
-                            <div className="flex gap-1.5 items-center">
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${order.brand === 'Ledi' ? 'bg-blue-600' : 'bg-purple-600'}`}>
-                                {order.brand}
-                              </span>
-                              {order.itemStore && (
-                                <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded">
-                                  🏪 {order.itemStore}
-                                </span>
-                              )}
-                            </div>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded text-white ${order.brand === 'Ledi' ? 'bg-blue-600' : 'bg-purple-600'}`}>
+                              {order.brand}
+                            </span>
                             <h3 className="font-bold text-base text-white mt-1">{order.customerName}</h3>
                             <p className="text-xs text-gray-300">📱 WA: {order.whatsapp}</p>
                             <p className="text-xs text-gray-400">{order.dressName} | Delivery: <span className="text-gray-200">{order.deliveryDate}</span></p>
@@ -799,10 +777,6 @@
                       </div>
 
                       <div className="space-y-2 text-xs text-gray-300 bg-[#0D1B2A] p-3 rounded-xl border border-gray-800">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Item Store:</span>
-                          <span className="font-bold text-amber-300">{selectedOrderDetails.itemStore || 'N/A'}</span>
-                        </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Dress / Item:</span>
                           <span className="font-bold text-white">{selectedOrderDetails.dressName}</span>
